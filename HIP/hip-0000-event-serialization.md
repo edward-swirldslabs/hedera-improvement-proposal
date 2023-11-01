@@ -19,50 +19,57 @@ superseded-by: <HIP number(s)>
 
 This HIP proposes several changes to the event serialization format.
 
-1. Add the round during which an event was created to the event's meta-data.
-2. Represent links to event parents as EventDescriptors, 4-tuples of (Event Hash, Creator NodeId, Generation, Round
-   Number).
+1. Add the `rosterRound` to the metadata of new events. The `rosterRound` is the latest round to
+   come to consensus on the node that created the event and is used to look up the correct consensus
+   roster for validating the event's signature on other nodes.
+2. Represent references to an event as `EventDescriptors`. EventDescriptors are used by an event to link to its
+   self-parent and other parents.
 3. Allow for multiple other parents.
-4. Reduce an event's unhashed meta-data to just the event's signature.
+4. Reduce an event's unhashed metadata to just the event's signature.
 
 ## Motivation
 
-### Add Address Book Round Number
+### Add `rosterRound` to Event Metadata
 
-When we allow dynamic address books such that nodes can be added or removed without restart, we need a way to indicate
-which address book was active when an event was created. A new address book becomes active on a round boundary. Writing
-the current round number into an event's meta-data upon creation will provide a way to determine which
-address book to use when validating the event.
+When we allow dynamic address books such that nodes can be added or removed from the consensus roster without restart,
+we need a way to indicate which consensus roster was active when an event was created. A new consensus roster becomes
+active on a round boundary. Writing the `rosterRound` into an event's metadata will provide a way to look up the
+effective consensus roster to validate the event's signature.
 
 This round number will also be used to determine when an event has become ancient and is no longer able to come to
 consensus if it has not reached consensus yet.
 
-### Represent Links to Event Parents as EventDescriptors
+### EventDescriptors as Event References
 
 An EventDescriptor is a 4-tuple:
 
-1. Event Hash - The hash of the event.
-2. Creator NodeId - The NodeId of the node that created the event.
-3. Generation - The generation of the event. (1 + the max of the event's parent's generations)
-4. Round Number - The round during which the event was created.
+1. `eventHash` - The hash of the event.
+2. `creatorId` - The NodeId of the node that created the event.
+3. `generation` - The generation of the event. (1 + the max of the event's parent's generations)
+4. `rosterRound` - The latest round to reach consensus on the node when the event was created.
 
 The EventDescriptor is the minimal amount of information needed to identify an event by its hash, which node created
 it, and be able to determine when an event has become ancient. It is used in place of the event itself when the
-content of the event (it's transactions) are not needed. This encapsulation of meta-data will allow us to further
+payload of the event (the transactions) are not needed. This encapsulation of metadata will allow us to further
 improve gossip, validation, and consensus algorithms.
 
-### Allow for Multiple Other Parents
+### Multiple Other Parents
 
 An event's ability to come to consensus is based on whether witness events can strongly see the
 event through parent links. Allowing for multiple other parents will improve the ability of events to be
 strongly seen by witnessing events. This is expected to reduce the number of rounds needed for an event to come to
 consensus.
 
-### Just The Signature In Unhashed Meta-Data
+While this change at the event serialization level will take effect in the software version under development when the 
+Pull Request merges, the gossip and consensus algorithms will remain unchanged at this time. Events will continue to 
+have a single other parent until new algorithms and a new implementation have been developed.
+
+### Signature As Unhashed Metadata
 
 All event data that is used in consensus must be hashed and signed to validate that the event has not been tampered
 with. After the above changes have been added to the collection of hashed data, the only remaining piece of data
-that is unhashed is the signature itself, which cannot be hashed.
+that is unhashed is the signature, which cannot be hashed.  Going forward, the implementation will no longer 
+encapsulate unhashed metadata as an object. 
 
 ## Rationale
 
@@ -143,43 +150,43 @@ have not changed may be omitted.
 +------------+---------+---------------------------------+---------------+
 ```
 
-### BaseEventHashedData
+### EventHashedData
 
 ```
 +--------------------------------------------------------------------------------------------------+
-| BaseEventHashedData Object                                                                       |
+| EventHashedData Object                                                                           |
 +------------+-----------------------+---------------------------------------------+---------------+
 | # of bytes | Type                  | Description                                 | Typical Value |
 +------------+-----------------------+---------------------------------------------+---------------+
 | 4 bytes    | Integer               | Serialization version of object             | 0x00000004    |
 +------------+-----------------------+---------------------------------------------+---------------+
-| V bytes    | SoftwareVersion       | The software version that created the event |               |
+| V bytes    | SoftwareVersion       | The software version that created the event |  (String)     |
 +------------+-----------------------+---------------------------------------------+---------------+
 | 12 bytes   | NodeId                | The node that created the event             |               |
 +------------+-----------------------+---------------------------------------------+---------------+
-| S bytes    | EventDescriptor       | The descriptor of the event's self parent   |               |
+| D bytes    | EventDescriptor       | The descriptor of the event's self parent   |               |
 +------------+-----------------------+---------------------------------------------+---------------+
 | L bytes    | EventDescriptor[]     | A list of descriptors for other parents     |               |
 +------------+-----------------------+---------------------------------------------+---------------+
 | 8 bytes    | Long                  | The round the event was created             |               |
 +------------+-----------------------+---------------------------------------------+---------------+
-| I bytes    | Instant               | The time the event was created              |               |
+| 16 bytes   | Instant               | The time the event was created              |               |
 +------------+-----------------------+---------------------------------------------+---------------+
 | T bytes    | Transaction[]         | The transactions within the event           |               |
 +------------+-----------------------+---------------------------------------------+---------------+
 ```
 
-### BaseEvent
+### Event
 
 ```
 +--------------------------------------------------------------------------------------------------+
-| BaseEvent Object                                                                                 |
+| Event Object                                                                                     |
 +------------+-----------------------+---------------------------------------------+---------------+
 | # of bytes | Type                  | Description                                 | Typical Value |
 +------------+-----------------------+---------------------------------------------+---------------+
 | 4 bytes    | Integer               | Serialization version of object             | 0x00000004    |
 +------------+-----------------------+---------------------------------------------+---------------+
-| H bytes    | BaseEventHashedData   | The hashed data of the event                |               |
+| H bytes    | EventHashedData       | The hashed data of the event                |               |
 +------------+-----------------------+---------------------------------------------+---------------+
 | 4 bytes    | Integer               | The length of the signature = S             |               |
 +------------+-----------------------+---------------------------------------------+---------------+
