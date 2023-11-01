@@ -45,7 +45,7 @@ An EventDescriptor is a 4-tuple:
 
 1. `eventHash` - The hash of the event.
 2. `creatorId` - The NodeId of the node that created the event.
-3. `generation` - The generation of the event. (1 + the max of the event's parent's generations)
+3. `generation` - The generation of the event. (1 + the max of the event's parents' generations)
 4. `rosterRound` - The latest round to reach consensus on the node when the event was created.
 
 The EventDescriptor is the minimal amount of information needed to identify an event by its hash, which node created
