@@ -65,7 +65,7 @@ of the communication layer between shards in a sharded Hiero ledger.
 ## Rationale
 
 This `CLPR` design originates with Dr. Leemon Baird and has been fleshed out
-and refined through the Hashgraph's architecture team.
+and refined through the Hashgraph's Architecture Team.
 
 Core to the design of CLPR is the connector abstraction which creates a
 clean separation of concerns between delivery and payment for interledger
@@ -94,9 +94,9 @@ Endpoints.
 
 In addition to the configuration of the remote CLPR Endpoint, the signed
 connector registration data contains submission criteria and payment
-configuration for enqueuing CLPR Application messages destined to the
+configuration for enqueuing CLPR Application Messages destined to the
 remote CLPR Endpoint. The payment configuration also indicates how the
-handling of received CLPR Application messages are paid for on the local
+handling of received CLPR Application Messages are paid for on the local
 CLPR Endpoint.
 
 To support the `ABFT` property, each CLPR Endpoint must ensure that the CLPR
@@ -174,7 +174,7 @@ User Stories
 ## Specification
 
 `CLPR` will be incrementally extended per type of `CLPR Endpoint` and
-application use case. What follows here is a specification for:
+`CLPR Application` use case. What follows here is a specification for:
 
 1. The abstract description of the `CLPR Connector Protocol`
 2. The abstract description of the `CLPR Application Protocol`
@@ -186,21 +186,27 @@ application use case. What follows here is a specification for:
 
 ### Abstract `CLPR Connector Protocol`
 
-Each type of `CLPR Endpoint` has its own data format for representing
-connector state and trust paradigm for generating state proofs. If a CLPR
-Endpoint does not understand the state proof mechanism of a remote CLPR
-Endpoint or the data format for the connector state being shared, they
-cannot form a channel of communication between the two connectors.
+Each type of `CLPR Endpoint` has its own data format and state proof 
+paradigm for representing and attesting to endpoint meta-data, connector state, 
+and message queue content. If a CLPR Endpoint does not understand the data 
+format or state proof mechanism of a remote CLPR Endpoint, they cannot form 
+a channel of communication between them. 
 
 The `Abstract CLPR Connector Protocol` specifies the minimal content needed
-to register new connectors and share state proofs of connector message queue
-state between endpoints. Each CLPR Endpoint type may require additional data
-upon connector registration or provide additional data in its channel state
-proofs beyond the core abstraction. CLPR Endpoints of different types can
-only communicate with each other if their deployed software versions
-supports communication between those two endpoint types.
+to register new CLPR Connectors and CLPR Endpoint configurations to validate 
+state proofs and the process of sharing connector state between the endpoints. 
+Each CLPR Endpoint type may require additional data upon connector 
+registration for its own purposes or provide additional data in its state 
+proofs beyond the core abstraction. The presence of additional 
+unnecessary data in state proofs is a result of how each CLPR Endpoint 
+stores the required content in their state.  This additional data, if 
+present, should be ignored.    
 
-#### Abstract Connector Registration and Update
+CLPR Endpoints of different types can only communicate with each other if their 
+deployed software versions supports communication between those two endpoint 
+types.
+
+#### Abstract Connector Registration
 
 At minimum, the following connector metadata will be included in the
 connector registration or update transaction and is signed by the connector
@@ -211,8 +217,9 @@ private key:
 3. `local_clpr_endpoint_config` : local endpoint configuration
 4. `remote_clpr_endpoint_type` : indicatest the type of remote clpr endpoint
 5. `remote_clpr_endpoint_config` : remote endpoint configuration for that type
-    1. `clpr_endpoint_ips` : An optional list of CLPR Endpoint IP addresses
-    2. `proof_config` : The initial config for validating state proofs
+    1. `clpr_endpoint_id` : The unique identifier for the CLPR Endpoint
+    2. `clpr_endpoint_ips` : An optional list of CLPR Endpoint IP addresses
+    3. `proof_configuration` : The initial config for validating state proofs
 
 The signature on the hash of the bytes of the connector registration message
 must be verifiable with the public key provided in the `connector_key`.
@@ -225,69 +232,106 @@ messages, and how to pay for the local handling of remotely submitted
 CLPR Application messages.
 
 The `remote_clpr_endpoint_type` indicates the CLPR Endpoint type of the
-remote ledger which entails the data format of the content received and the
-type of state proof used to validate the content. The
-`remote_clpr_endpoint_config` indicates the optional ip addresses to connect
+remote ledger which entails the data format of the content received from 
+the remote endpoint and the type of state proof used to validate the content.
+The `remote_clpr_endpoint_config` indicates the ip addresses to connect
 to when reaching out to the remote endpoint and the initial configuration for
-validating state proofs. If the list of ip addresses is empty, the local
-ledger will only receive connections from the remote ledger. At least one of
-the CLPR Endpoints must be configured with the IP Addresses of the other
-endpoint otherwise neither endpoint will attempt to communicate to the other.
+validating state proofs. This collection of data should be stored in its own 
+state and shared back in a state proof to the remote ledger to solicit 
+updates to the configuration of the remote ledger.  The `clpr_endpoint_id` 
+is necessary in all connector registrations.  The list of 
+`clpr_endpoint_ips` may be empty. The `proof_config` is required in the 
+first connector registered to the remote CLPR Endpoint, but may be omitted 
+in subsequent connector registrations to the same CLPR Endpoint. If the list 
+of ip addresses is empty, the local ledger will only receive connections 
+from the remote ledger. If a pair of CLPR Endpoints has a connector 
+registered between them, at least one of the CLPR Endpoints must be 
+configured with the IP Addresses of the other endpoint otherwise neither 
+endpoint will attempt to communicate to the other.
 
 #### Abstract CLPR Channel Protocol
 
 When one CLPR Endpoint (local) reaches out to a remote CLPR Endpoint, there
 is at least 1 registered connector on the local endpoint that has provided
 one or more IP addresses to connect to. It is assumed that all IP addresses
-reach the same CLPR Endpoint. The process of creating channels between
-matching connectors and exchanging queued messages for each connector is as
-follows:
+reach the same CLPR Endpoint. The process of creating a communication 
+channel between to CLPR Endpoints to exchange connector state and 
+queued messages is as follows: 
 
-1. The initiating endpoint sends the latest state proof validation
-   configuration it has for the receiving endpoint.
-    1. In response, the receiving endpoint provides any update of the state
-       proof validation configuration to the latest configuration
-2. The receiving endpoint sends the latest state proof validation
-   configuration it has for the initiating endpoint
-    1. In response, the receiving endpoint provides any update of the state
-       proof validation configuration to the latest configuration
-3. The initiating endpoint starts a series of connector syncs
-4. The initiating endpoint sends a message indicating it is done
-5. The receiving endpoint starts a series of connector syncs
-6. The receiving endpoint sends a message indicating it is done
+1. The initiating endpoint sends a `Proof of Remote CLPR Endpoint Config` 
+   channel message which is a state proof showing the initiating endpoint's 
+   configuration for the receiving endpoint.
+    1. In response, the receiving endpoint provides state proofs which 
+       attest to the receiving endpoint's latest configuration. 
+2. The receiving endpoint sends a `Proof of Remote CLPR Endpoint Config`
+   channel message which is a state proof showing the receiving endpoint's 
+   configuration for the initiating endpoint.
+    1. In response, the initiating endpoint provides state proofs which 
+       attest to the initiating endpoint's latest configuration. 
+3. The initiating endpoint starts a series of `Connector Syncs`.
+4. The initiating endpoint sends a message indicating it is done.
+5. The receiving endpoint starts a series of `Connector Syncs`.
+6. The receiving endpoint sends a message indicating it is done.
 7. The network connection is closed.
 
-The messages for conveying and updating the state proof configuration are
-specific to the `CLPR Endpoint Type` and defined in that type's extension of
-the `CLPR Connector Protocol`.
+A CLPR Endpoint's response messages for attesting to its latest configuration 
+are specific to that CLPR Endpoint type and are defined in that type's 
+extension of the `CLPR Connector Protocol`.  It may be the case that a 
+series of state proofs showing incremental verifiable changes are necessary 
+to attest to the latest configuration.  An explanation of how to update the 
+state proof verifier through these attestations of configuration must be 
+provided in the specification of the extension for the CLPR Endpoint type.
 
 The protocol for a `Connector Sync` has the following pattern:
 
-1. The initiating endpoint sends a `proof of queue state` message
+1. The initiating endpoint sends a `Proof of Connector Queue State` message
    for its local connector queue state.
     1. If the receiving endpoint does not have a matching connector, a reject
        message is sent in response and nothing further happens in the sync
        for this specific connector.
-2. Otherwise, the receiving endpoint sends a `proof of queue state` message
-   for its local connector queue state.
-3. The initiating endpoint sends a `throttle specification` which determines
+2. Otherwise, the receiving endpoint sends a `Proof of Connector Queue State` 
+   message for its local connector queue state.
+3. The initiating endpoint sends a `Throttle Specification` which determines
    how many queued messages it is willing to receive in this sync.
-4. The receiving endpoint responds with its own `throttle specification`.
-5. Each endpoint sends a sequence of `proof of message sequence` messages that
+4. The receiving endpoint responds with its own `Throttle Specification`.
+5. Each endpoint sends a sequence of `Proof of Message Sequence` messages that
    communicate the next messages in the queue while respecting the throttle
    specifications.
 6. TODO: Add Error Handling Into This Workflow
-7. Each endpoint sends a `finished with this sync` message to indicate they are
+7. Each endpoint sends a `Finished With This Sync` message to indicate they are
    ready to proceed to the next connector sync.
 
 #### Abstract Channel Messages
 
-##### Abstract Proof Of Queue State
+##### Abstract Proof of Remote CLPR Endpoint Configuration
 
-A `Proof Of Queue State` Channel Message has two parts.
+A `Proof of Remote CLPR Endpoint Configuration` Channel Message has two parts.
 
-1. The content of the local connector's queue state.
-2. The state proof validating the hash of the bytes of the above content.
+1. The configuration for the remote CLPR Endpoint stored in the local 
+   endpoint's state
+2. The state proof validating the hash of the bytes of the above.  
+
+The content of the remote CLPR Endpoint configuration includes at minimum 
+the following: 
+1. `clpr_endpoint_id` : The CLPR Endpoint's Id
+2. `clpr_endpoint_ips` : The list of remote endpoint ip addresses
+3. `proof_configuration` : The latest known configuration for validating 
+   proofs from the remote CLPR Endpoint
+
+Note that while this is the configuration from the remote endpoint, this 
+content is in the local CLPR Endpoint's data format.  Both the 
+`clpr_endpoint_id` and the `proof_configuration` are variable length byte 
+arrays to hold the appropriate content.  There may be sub structure to the 
+`proof_configuration` byte array, but that substructure only matters to the 
+code implementing the proof verifier for the remote CLPR Endpoint's state 
+proofs.
+
+##### Abstract Proof of Connector Queue State
+
+A `Proof of Connector Queue State` Channel Message has two parts.
+
+1. The content of the local connector's queue state
+2. The state proof validating the hash of the bytes of the above content
 
 The content of the endpoint's connector queue state is in the data format
 determined by the endpoint type and consists of at least the following:
