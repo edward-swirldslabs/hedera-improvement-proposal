@@ -184,7 +184,7 @@ User Stories
     2. Hiero implementation of the `CLPR Endpoint`
     3. Hiero implementation of the `Remote Contract Call` use case
 
-### Abstract `CLPR Connector Protocol`
+### Abstract CLPR Connector Protocol
 
 Each type of `CLPR Endpoint` has its own data format and state proof
 paradigm for representing and attesting to endpoint meta-data, connector state,
@@ -314,9 +314,10 @@ A `Proof of Remote CLPR Endpoint Configuration` Channel Message has two parts.
 The content of the remote CLPR Endpoint configuration includes at minimum
 the following:
 
-1. `clpr_endpoint_id` : The CLPR Endpoint's Id
-2. `clpr_endpoint_ips` : The list of remote endpoint ip addresses
-3. `proof_configuration` : The latest known configuration for validating
+1. `clpr_endpoint_type` : The type of the CLPR Endpoint.
+2. `clpr_endpoint_id` : The CLPR Endpoint's Id
+3. `clpr_endpoint_ips` : The list of remote endpoint ip addresses
+4. `proof_configuration` : The latest known configuration for validating
    proofs from the remote CLPR Endpoint
 
 Note that while this is the configuration from the remote endpoint, this
@@ -381,9 +382,9 @@ Each time a new message is enqueued to be sent to the remote connector's
 endpoint, it is given the next available sequence number indicated by
 `out_next_seq_num`, and `out_next_seq_num` is incremented.
 
-##### Abstract Proof of Message Sequence
+##### Abstract Proof of Connector Message Sequence
 
-The `Proof of Message Sequence` has 3 parts:
+The `Proof of Connector Message Sequence` has 3 parts:
 
 1. A list of outgoing CLPR Application messages with sequence numbers
    `(m+1 .. n-1)` where  `m+1 <= n-1`
@@ -530,7 +531,7 @@ specifying the call back API for applications of each supported use case.
 
 Each `CLPR Application Use Case` specifies the following abstract information:
 
-1. The definition of the CLPR Application Message Type for the use case.
+1. The CLPR Application Message Type identifier for the use case.
 2. The abstract structure of the initiating CLPR Application Messages
 3. The abstract structure of the reply message for each initiating message.
 4. The handler semantics for each of the above abstract messages.
@@ -549,17 +550,144 @@ Each `CLPR Application Use Case` specifies the following abstract information:
 
 #### Abstract Constructor Arguments
 
-### Hiero CLPR Extensions and Implementation
+### Hiero CLPR Extensions
+
+The `Hiero CLPR Extensions` specify the concrete data format for all
+messages shared via the `CLPR Connector Protocol` and `CLPR Application 
+Protocol`, the hashing algorithm to use for the running hash on application
+messages and in Merkle Trees, and the state proof paradigm for Hiero CLPR
+Endpoints.
+
+#### Hiero Data Format
+
+The data format for all state and message content on Hiero networks with
+Protobuf V3. While Hiero uses a custom protobuf library for serializing
+messages to create deterministic serializations of data, any protobuf V3  
+client can read the data without problem or customization.
+
+#### Hiero Hashing Algorithm
+
+The hash algorithm used by Hiero networks is SHA-384. This is used for both
+running hashes in CLPR Application Messages sequences and for Merkle Trees.
+The usage in Merkle Trees is specified in HIP-??? TODO: Get HIP number.
+
+For computing the Running Hash of a message sequence, to compute the
+hash of the next message in the sequence, the bytes of the next message is
+appended with the bytes of the previous running hash and the concatenation
+is hashed using SHA-384.
 
 #### Hiero CLPR Connector Protocol Extensions
 
-#### Hiero CLPR Endpoint Implementation
+##### Hiero CLPR Connector Transactions
 
-##### State
+###### Connector Registration and Update
+
+###### Delete Connector
+
+##### Channel Messages
+
+###### State Proof Message
+
+```protobuf
+message HieroClprStateProof {
+  /*
+   * A Hiero network signature on a root hash value. 
+   */
+  bytes root_hash_signature = 1;
+
+  /*
+   * The sibling hashes in a Merkle Tree.  
+   */
+  repeated bytes sibling_hashes = 2;
+}
+```
+
+###### Hiero CLPR Endpoint Configuration Message
+
+```protobuf
+message HieroClprEndpointConfig {
+  /*
+   * The clpr endpoint type for the following configuration
+   */
+  uint64 clpr_endpoint_type = 1;
+
+  /*
+   * The clpr endpoint id for the following configuration
+   */
+  bytes clpr_endpoint_id = 2;
+
+  /*
+   * The known ip addresses for the clpr endpoint of the given id
+   */
+  repeated ServiceEndpoint clpr_endpoint_ips = 3;
+
+  /*
+   * The state proof verification configuration for the given clpr endpoint
+   */
+  bytes proof_configuration = 4;
+}
+```
+
+###### Proof of Remote CLPR Endpoint Configuration Message
+
+```protobuf
+
+message HieroClprProofEndpointConfiguration {
+  /*
+   * The clpr endpoint configuration being proven
+   */
+  HieroClprEndpointConfig endpoint_configuration = 1;
+  /*
+   * A state proof of the hash of the bytes of the endpoint configuration
+   */
+  HieroClprStateProof state_proof = 2;
+}
+```
+
+###### Connector Queue State Message
+
+```protobuf
+message HieroClprConnectorQueueState {
+  bytes connector_key = 1;
+  bytes connector_alias = 2;
+  uint64 in_received = 3
+  bytes in_running_hash = 4;
+  uint64 out_received = 5;
+  uint64 out_next_seq_num = 6;
+}
+```
+
+###### Proof of Connector Queue State Message
+
+```protobuf
+
+message HieroClprProofConnectorQueueState {
+  /*
+   * A connector's message queue state
+   */
+  HieroClprConnectorQueueState connector_queue_state = 1;
+  /*
+   * A state proof of the hash of the bytes of the connector's queue state
+   */
+  HieroClprStateProof state_proof = 2;
+}
+```
+
+###### Connector Message Sequence
+
+###### Proof of Connector Message Sequence
+
+#### Hiero CLPR Application Protocol Extensions
+
+##### Remote Contract Call Extensions
+
+### Hiero CLPR Endpoint Implementation
+
+##### Connector State
 
 #### Hiero CLPR Remote Contract Call Implementation
 
-### The CLPR SDK
+### The Hiero CLPR SDK
 
 ### Impact on Block Nodes
 
