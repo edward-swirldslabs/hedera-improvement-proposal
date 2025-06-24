@@ -514,8 +514,7 @@ application the relevant messages asynchronously. When sending messages,
 the application must indicate the outgoing connector, and based on the use
 case, a possible destination application.
 
-![CLPR Application](../assets/hip-0000-clpr/clpr-msg-handler-application
--interface.drawio.svg)
+![CLPR Application](../assets/hip-0000-clpr/clpr-msg-handler-application-interface.drawio.svg)
 
 Each CLPR Application has a unique public/private ECDSA key, like connectors,
 where the public key is used as the application identifier. As part of
