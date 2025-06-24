@@ -106,7 +106,7 @@ replies are returned in the order in which the original messages are sent.
 Through bundling the mechanisms of communication, trust, and payments into
 the `CLPR Connector Protocol`, the interledger application logic can remain
 free of these concerns.
-
+![Separable Connector and Application](../assets/hip-0000-clpr/clpr-endpoint-separate-ledger.drawio.svg)
 ### CLPR Application Protocol
 
 The `CLPR Application Protocol` is an extensible collection of `CLPR 
