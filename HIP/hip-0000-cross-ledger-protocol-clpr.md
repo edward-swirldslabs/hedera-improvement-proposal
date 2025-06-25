@@ -57,7 +57,7 @@ signature scheme for signing block root hashes, or the SHA-384 hashing
 algorithm which Hiero uses for Merkle Trees.
 
 There is a clear need for a Hiero compatible interledger communication
-protocol to support Hiero to Hiero asset interactions that are ABFT secure.
+protocol to support Hiero to Hiero asset interactions that is ABFT secure.
 
 The `Cross-Ledger PRotocol` (`CLPR`), proposed here, could also form the basis
 of the communication layer between shards in a sharded Hiero ledger.
@@ -76,21 +76,19 @@ messages in the `CLPR Application Protocol`.
 
 A `Connector` is a collection of data structures within a `CLPR Endpoint`
 that specify the connector's local state and outgoing message queue. Each
-connector has its own public/private ECDSA key pair. When a connector is
-registered with an endpoint, the registration message is signed by the
-connector's private key to establish authenticity and authority to create
-the connector. Part of the signed registration data is the public key to
-verify the private key's signature. Two connectors in two different
-CLPR Endpoints match if they share the same public key. When two
-connectors are successfully paired between two CLPR Endpoints, a
+connector has its own public/private ECDSA key pair, used solely for 
+registration, pairing connectors between endpoints, and configuration updates. 
+When a connector is registered with an endpoint, the registration message is 
+signed by the connector's private key to establish authenticity and 
+authority to create the connector on the endpoint. Two connectors in two 
+differentCLPR Endpoints match if they share the same public key. When two 
+connectors are successfully paired between two CLPR  Endpoints, a 
 bidirectional `Channel` is formed for communicating connector queue state
 changes between the CLPR Endpoints. Before a channel can be formed, each of
 the CLPR Endpoints must have the matching connector public key registered
-along with the state data format and proof paradigm used by the remote CLPR
-endpoint. At least one of the CLPR Endpoints will need the valid IP
-Addresses of the other CLPR Endpoint. Two CLPR Endpoints may have many
-connectors between them, but a single connector may only connect two CLPR
-Endpoints.
+along with the configuraiton for the remote endpoint's data format and 
+proof paradigm. Two CLPR Endpoints may have many connectors between them, 
+but a single connector may only connect two CLPR Endpoints.
 
 In addition to the configuration of the remote CLPR Endpoint, the signed
 connector registration data contains submission criteria and payment
@@ -105,26 +103,30 @@ replies are returned in the order in which the original messages are sent.
 
 Through bundling the mechanisms of communication, trust, and payments into
 the `CLPR Connector Protocol`, the interledger application logic can remain
-free of these concerns.
+free of these concerns.  The separability of the connector logic from the 
+application logic allows for a flexibility in deployment architecture and 
+provides a way for ledgers which do not have strong state proof capabilities 
+to integrate into the CLPR ecosystem through using a CLPR Endpoint relay.   
+
 ![Separable Connector and Application](../assets/hip-0000-clpr/clpr-endpoint-separate-ledger.drawio.svg)
+
 ### CLPR Application Protocol
 
 The `CLPR Application Protocol` is an extensible collection of `CLPR 
 Application Messages` that enable the communication and coordination
-between deployed CLPR Applications. Each message must be handled in the
-order received, and a reply message must be sent in response to each message
-in the same order. Each CLPR Application Message is use case specific,
-containing parameters for that use case, and has its own dedicated handler.
-
-As the set of supported application use cases are expanded, creating new
-types of CLPR Application Messages, the message handlers on CLPR Endpoints
-will need to be updated.
+between deployed CLPR Applications. Each extension is called a `Use Case` 
+and specifies a set of messages and a message handler that enables the use 
+case. `CLPR Applications` implement the programmatic interfaces of each use case 
+they interact with and register themselves with the message handlers of the 
+use cases. As the set of supported application use cases are expanded, 
+creating new types of CLPR Application Messages, the message handlers will 
+need to be updated.
 
 To keep the specification and implementation of this HIP from becoming too
-complex, the initial application use case supported is enabling remote smart
+complex, the initial application use case supported is remote smart
 contract calls. Future HIPS will support the transfer of ERC20 tokens,
-ERC721 NFTs, and Hiero native assets and will not have to modify the core
-mechanics of the `CLPR Connector Protocol` introduced in this HIP.
+ERC721 NFTs, and transfer of Hiero native assets and will not have to modify 
+the core mechanics of the `CLPR Connector Protocol` introduced in this HIP.
 
 ### Alternatives to `CLPR`
 
@@ -150,8 +152,7 @@ ledger are not added to the state of another ledger. Light clients also do
 not have provisions in their protocol for specifying who pays for the cost
 of validating the state proofs and handling the messages on the receiving
 network. With CLPR, the entity registering the connector determines the
-payment mechanics for verifying state proofs and handling application
-messages sent and received through the connector.
+payment mechanics for verifying state proofs and message handling.
 
 ## Personas and User Stories
 
@@ -178,9 +179,10 @@ User Stories
 
 1. The abstract description of the `CLPR Connector Protocol`
 2. The abstract description of the `CLPR Application Protocol`
-3. The `Remote Contract Call` application use case.
+3. The `Remote Contract Call` application use case
 4. Hiero specific extensions and implementation
-    1. Hiero extension of the `CLPR Connector Protocol`
+    1. Hiero data format extension of the `CLPR Connector Protocol` and `CLPR 
+       Application Protocol`
     2. Hiero implementation of the `CLPR Endpoint`
     3. Hiero implementation of the `Remote Contract Call` use case
 
@@ -212,17 +214,20 @@ At minimum, the following connector metadata will be included in the
 connector registration or update transaction and is signed by the connector
 private key:
 
-1. `connector_key` : The connector's public key for pairing
-2. `local_clpr_endpoint_type` : indicates the type of local clpr endpoint
-3. `local_clpr_endpoint_config` : local endpoint configuration
-4. `remote_clpr_endpoint_type` : indicatest the type of remote clpr endpoint
-5. `remote_clpr_endpoint_config` : remote endpoint configuration for that type
-    1. `clpr_endpoint_id` : The unique identifier for the CLPR Endpoint
-    2. `clpr_endpoint_ips` : An optional list of CLPR Endpoint IP addresses
-    3. `proof_configuration` : The initial config for validating state proofs
+1. `connector_key` : the connector's public key for pairing
+2. `local_clpr_endpoint_id` : the identifier of the local clpr endpoint
+3. `local_clpr_endpoint_type` : indicates the type of local clpr endpoint
+4. `local_clpr_endpoint_config` : local endpoint configuration
+5. `remote_clpr_endpoint_type` : indicatest the type of remote clpr endpoint
+6. `remote_clpr_endpoint_config` : remote endpoint configuration for that type
+    1. `clpr_endpoint_id` : the unique identifier for the CLPR Endpoint
+    2. `clpr_endpoint_ips` : an optional list of CLPR Endpoint IP addresses
+    3. `proof_configuration` : the initial config for validating state proofs
 
 The signature on the hash of the bytes of the connector registration message
-must be verifiable with the public key provided in the `connector_key`.
+must be verifiable with the public key provided in the `connector_key`.  
+Including the `local_clpr_endpoint_id` is how the clpr endpoint knows that 
+the connector owner is intending to connector to be installed on this endpoint. 
 
 The `local_clpr_endpoint_type` indicates the content and data format for the
 `local_clpr_endpoint_config`. This content is specific to the local CLPR
@@ -253,10 +258,13 @@ endpoint will attempt to communicate to the other.
 
 When one CLPR Endpoint (local) reaches out to a remote CLPR Endpoint, there
 is at least 1 registered connector on the local endpoint that has provided
-one or more IP addresses to connect to. It is assumed that all IP addresses
-reach the same CLPR Endpoint. The process of creating a communication
-channel between to CLPR Endpoints to exchange connector state and
-queued messages is as follows:
+one or more initial IP addresses to connect to. It is assumed that all IP 
+addresses in a connector registration reach the same CLPR Endpoint. Once two 
+CLPR Endpoints have established a channel of communication between them, the 
+configuration for the remote endpoints is updated through the endpoints 
+directly talking to each other through a channel. The process of creating a 
+communication channel between two CLPR Endpoints to exchange connector 
+state and queued messages is as follows:
 
 1. The initiating endpoint sends a `Proof of Remote CLPR Endpoint Config`
    channel message which is a state proof showing the initiating endpoint's
@@ -302,6 +310,12 @@ The protocol for a `Connector Sync` has the following pattern:
    ready to proceed to the next connector sync.
 
 #### Abstract Channel Messages
+
+The required content of channel messages passed between endpoints is 
+specified here.  Each endpoint type will have its own data format and may 
+provide additional data in the messages that is irrelevant.  The additional 
+data may include metadata related to how this content is stored in the 
+state of each endpoint. 
 
 ##### Abstract Proof of Remote CLPR Endpoint Configuration
 
@@ -580,12 +594,6 @@ is hashed using SHA-384.
 
 #### Hiero CLPR Connector Protocol Extensions
 
-##### Hiero CLPR Connector Transactions
-
-###### Connector Registration and Update
-
-###### Delete Connector
-
 ##### Channel Messages
 
 ###### State Proof Message
@@ -600,7 +608,7 @@ message HieroClprStateProof {
   /*
    * The sibling hashes in a Merkle Tree.  
    */
-  repeated bytes sibling_hashes = 2;
+  repeated MerkleSiblingHash sibling_hashes = 2;
 }
 ```
 
@@ -636,9 +644,10 @@ message HieroClprEndpointConfig {
 
 message HieroClprProofEndpointConfiguration {
   /*
-   * The clpr endpoint configuration being proven
+   * The Hiero state leaf containing the clpr endpoint configuration
    */
-  HieroClprEndpointConfig endpoint_configuration = 1;
+  StateLeaf endpoint_configuration = 1;
+  
   /*
    * A state proof of the hash of the bytes of the endpoint configuration
    */
@@ -650,11 +659,35 @@ message HieroClprProofEndpointConfiguration {
 
 ```protobuf
 message HieroClprConnectorQueueState {
+  
+  /*
+   * The connector's public key
+   */
   bytes connector_key = 1;
-  bytes connector_alias = 2;
-  uint64 in_received = 3
+  
+  /*
+   * The short alias for the connector
+   */
+  int64 connector_alias = 2;
+  
+  /*
+   * The endpoint's latest sequence number for received messages
+   */
+  uint64 in_received = 3;
+  
+  /*
+   * The running hash of the latest received message
+   */
   bytes in_running_hash = 4;
+  
+  /*
+   * The highest sequence number for received messages for the remote endpoint
+   */
   uint64 out_received = 5;
+  
+  /*
+   * The next available sequence number for messages sent to the remote endpoint
+   */
   uint64 out_next_seq_num = 6;
 }
 ```
@@ -665,9 +698,10 @@ message HieroClprConnectorQueueState {
 
 message HieroClprProofConnectorQueueState {
   /*
-   * A connector's message queue state
+   * The Hiero sate leaf containing the connector's queue state
    */
-  HieroClprConnectorQueueState connector_queue_state = 1;
+  StateLeaf connector_queue_state = 1;
+  
   /*
    * A state proof of the hash of the bytes of the connector's queue state
    */
@@ -677,6 +711,52 @@ message HieroClprProofConnectorQueueState {
 
 ###### Connector Message Sequence
 
+```protobuf
+message HieroClprConnectorMessageEntryKey {
+  /*
+   * the alias for the connector
+   */
+  int64 connector_alias = 1;
+  /*
+   * the sequence number of the message in the outgoing queue
+   */
+  uint64 seq_num = 2;
+}
+```
+
+
+```protobuf
+message HieroClprConnectorMessageEntryValue {
+   /*
+    * the outgoing clpr application message
+    */
+   HieroClprApplicationMessage message = 1;
+   /*
+    * the new running_hash after the message is added to the sequence  
+    */
+   bytes running_hash;
+}
+```
+
+```protobuf
+message HieroClprConnectorMessageSequence {
+   /*
+    * A sequence of clpr application messages, all but the last
+    */
+   repeated HieroClprApplicationMessage message_sequence = 1;
+
+   /*
+    * The Hiero state for the last clpr application message in the sequence. 
+    */
+   StateLeaf final_message = 2;
+
+   /*
+    * the state proof for the final message
+    */
+   HieroClprStateProof state_proof = 4;
+}
+```
+
 ###### Proof of Connector Message Sequence
 
 #### Hiero CLPR Application Protocol Extensions
@@ -685,9 +765,15 @@ message HieroClprProofConnectorQueueState {
 
 ### Hiero CLPR Endpoint Implementation
 
+#### Hiero CLPR Connector Transactions
+
+##### Connector Registration and Update
+
+##### Delete Connector
+
 ##### Connector State
 
-#### Hiero CLPR Remote Contract Call Implementation
+### Hiero CLPR Remote Contract Call Implementation
 
 ### The Hiero CLPR SDK
 
