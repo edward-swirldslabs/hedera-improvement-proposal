@@ -133,9 +133,9 @@ Application Messages, additional message handlers will need to be deployed.
 
 To keep the specification and implementation of this HIP from becoming too
 complex, a single initial application use case is supported, the ability to
-perform remote smart contract calls. Future HIPS will support the transfer of
-ERC20 tokens, ERC721 NFTs, and transfer of Hiero native assets and will not
-have to modify the core mechanics of the `CLPR Connector Protocol`
+perform remote application calls. Future HIPS will support the
+transfer of ERC20 tokens, ERC721 NFTs, and transfer of Hiero native assets
+and will not have to modify the core mechanics of the `CLPR Connector Protocol`
 introduced in this HIP.
 
 ### Alternatives to `CLPR`
@@ -189,11 +189,11 @@ User Stories
 
 1. The abstract description of the `CLPR Connector Protocol`
 2. The abstract description of the `CLPR Application Protocol`
-3. The `Remote Contract Call` application use case
+3. The `Remote Application Call` application use case
 4. The Hiero extension of the `CLPR Connector Protocol`
 5. The Hiero extension of the `CLPR Application Protocol`
 6. The Hiero implementation of the `CLPR Endpoint`
-7. The Hiero implementation of the `Remote Contract Call` use case
+7. The Hiero implementation of the `Remote Application Call` use case
 
 ![CLPR Application](../assets/hip-0000-clpr/hiero-clpr-organization.drawio.svg)
 
@@ -203,7 +203,7 @@ Each type of `CLPR Endpoint` has its own data format and state proof
 paradigm for representing and attesting to endpoint metadata, connector state,
 and message queue content. If a CLPR Endpoint does not understand the data
 format or state proof mechanism of a remote CLPR Endpoint, they cannot form
-a channel of communication between them.  
+a channel of communication between them.
 
 The `Abstract CLPR Connector Protocol` specifies the minimal content needed
 to register new CLPR Connectors and CLPR Endpoint configurations to validate
@@ -217,19 +217,19 @@ present, should be ignored.
 
 CLPR Endpoints of different types can only communicate with each other if their
 deployed software versions supports communication between those two endpoint
-types.  When one endpoint initiates a network connection to a remote 
-endpoint, the initiating endpoint must use the network messaging paradigm of 
-the receiving endpoint.  For example, suppose endpoint A uses gRPC as is 
-network messaging paradigm with protobuf as its data format for state 
-proofs and endpoint B uses a custom bytes format for network messages and 
-representing state proofs. If B initiates the connection to A, it must use 
-gRPC and communicate its state proofs to A in a raw sequence of bytes within 
-the context of a protobuf message. Endpoint A needs know how to parse the 
-bytes to recover the content of B's state proofs. Similarly, if A 
-initiates the connection to B, it must use the custom network messaging 
-format that B uses and A must provide its protobuf state proofs as a byte 
-serialized payload in B's network messaging format.  B must know how to 
-parse the protobuf payload to recover the content of A's state proofs.  
+types. When one endpoint initiates a network connection to a remote
+endpoint, the initiating endpoint must use the network messaging paradigm of
+the receiving endpoint. For example, suppose endpoint A uses gRPC as is
+network messaging paradigm with protobuf as its data format for state
+proofs and endpoint B uses a custom bytes format for network messages and
+representing state proofs. If B initiates the connection to A, it must use
+gRPC and communicate its state proofs to A in a raw sequence of bytes within
+the context of a protobuf message. Endpoint A needs know how to parse the
+bytes to recover the content of B's state proofs. Similarly, if A
+initiates the connection to B, it must use the custom network messaging
+format that B uses and A must provide its protobuf state proofs as a byte
+serialized payload in B's network messaging format. B must know how to
+parse the protobuf payload to recover the content of A's state proofs.
 
 #### Abstract Connector Registration
 
@@ -250,13 +250,13 @@ private key:
 The signature on the hash of the bytes of the connector registration message
 must be verifiable with the public key provided in the `connector_key`.  
 Including the `local_clpr_endpoint_id` is how the clpr endpoint knows that
-the connector owner is intending for the connector to be installed on this 
+the connector owner is intending for the connector to be installed on this
 endpoint.
 
 The `local_clpr_endpoint_type` indicates the content and data format for the
-`local_clpr_endpoint_config`. The configuration content is specific to the 
-local CLPR endpoint type and may include parameters for approving the local 
-submission of CLPR Application Messages to the connector, charging fees for 
+`local_clpr_endpoint_config`. The configuration content is specific to the
+local CLPR endpoint type and may include parameters for approving the local
+submission of CLPR Application Messages to the connector, charging fees for
 submitted messages, and how to pay for the handling of remotely submitted
 CLPR Application messages.
 
@@ -268,16 +268,16 @@ to when reaching out to the remote endpoint and the initial configuration for
 validating state proofs. This collection of data should be stored in its own
 state and shared through a state proof to the remote ledger to solicit
 updates to the configuration of the remote ledger. The `clpr_endpoint_id`
-is necessary in all connector registrations. The `proof_config` is required 
-in the first connector registered to the remote CLPR Endpoint, but may be 
-omitted in subsequent connector registrations to the same CLPR Endpoint. If 
-the proof configuration for the remote endpoint was bad in the first 
-connector registered, additional proof configurations may be provided 
-through updates to the connector or additional connector registrations. If the 
+is necessary in all connector registrations. The `proof_config` is required
+in the first connector registered to the remote CLPR Endpoint, but may be
+omitted in subsequent connector registrations to the same CLPR Endpoint. If
+the proof configuration for the remote endpoint was bad in the first
+connector registered, additional proof configurations may be provided
+through updates to the connector or additional connector registrations. If the
 list of ip addresses for an endpoint is empty in all connector registrations,
-the local ledger will only receive connections from the remote ledger. If a 
-pair of CLPR Endpoints has a connector registered between them, at least one of 
-the CLPR Endpoints must be configured with the IP Addresses of the other 
+the local ledger will only receive connections from the remote ledger. If a
+pair of CLPR Endpoints has a connector registered between them, at least one of
+the CLPR Endpoints must be configured with the IP Addresses of the other
 endpoint otherwise neither endpoint will attempt to communicate to the other.
 
 #### Abstract CLPR Channel Protocol
@@ -288,7 +288,7 @@ one or more initial IP addresses to connect to. It is assumed that all IP
 addresses in a connector registration reach the same CLPR Endpoint. Once two
 CLPR Endpoints have established a channel of communication between them, the
 configuration for the remote endpoints is updated through the endpoints
-directly talking to each other through a channel. The process of 
+directly talking to each other through a channel. The process of
 communicating through a channel between two CLPR Endpoints to exchange connector
 state and queued messages is as follows:
 
@@ -329,7 +329,7 @@ The protocol for a `Connector Sync` has the following pattern:
    how many queued messages it is willing to receive in this sync.
 4. The receiving endpoint responds with its own `Throttle Specification`.
 5. Each endpoint sends a sequence of `Proof of Message Sequence` messages that
-   communicate the next sequence of messages in the queue while respecting the 
+   communicate the next sequence of messages in the queue while respecting the
    throttle specifications.
 6. TODO: Add Error Handling Into This Workflow
 7. Each endpoint sends a `Finished With This Sync` message to indicate they are
@@ -341,8 +341,8 @@ The required content of channel messages passed between endpoints is
 specified here. Each endpoint type will have its own data format and may
 provide additional data in the messages that is irrelevant. The additional
 data may include metadata related to how this content is stored in the
-state of each endpoint. The hashing algorithm used and the state proof 
-paradigm are determined by the type of endpoint sending the content. 
+state of each endpoint. The hashing algorithm used and the state proof
+paradigm are determined by the type of endpoint sending the content.
 
 ##### Abstract Proof of Remote CLPR Endpoint Configuration
 
@@ -414,9 +414,9 @@ The outgoing messages in the open interval `(out_rec, out_next_seq_num)` are
 stored in the local endpoint's state so they can be provided during
 connector syncs. Once an endpoint receives a proof of the remote
 connector's state where `remote.in_received > out_received`, the local
-connector's queue state is updated such that 
-`out_received := remote.in_received` and the outgoing messages with 
-sequence number between the old `out_received` and the new `out_received` 
+connector's queue state is updated such that
+`out_received := remote.in_received` and the outgoing messages with
+sequence number between the old `out_received` and the new `out_received`
 (inclusive) are purged from the local endpoint's state.
 
 Each time a new message is enqueued to be sent to the remote connector's
@@ -546,7 +546,7 @@ are common to all extensions:
 ### Abstract CLPR Applications
 
 A `CLPR Application` is software that is deployed to multiple `CLPR 
-Endpoints` that employs one or more `CLPR Aapplication Use Cases`. Each
+Endpoints` that employs one or more `CLPR Application Use Cases`. Each
 CLPR Application Use Case is implemented through a collection of `CLPR 
 Application Messages` and the core `CLPR Application Message Handler` for
 that use case. A CLPR Application implements a call-back interface for
@@ -561,35 +561,192 @@ Each CLPR Application has a unique public/private ECDSA key, like connectors,
 where the public key is used as the application identifier. As part of
 verification of authorization to install the application, the entity
 requesting the installation of the software signs the `clpr_endpoint_id`
-with the applications private key. The CLPR Endpoint verifies that the
+with the application's private key. The CLPR Endpoint verifies that the
 endpoint id has been signed by the correct private key belonging to the
-application. Once installed, the clpr application can send and receive
+application. Once installed, clpr applications can send and receive
 messages to its application id at the CLPR Endpoint.
 
 The definition of each application use case remains abstract as each CLPR
 Endpoint Type will have its own pattern and allowed programming languages for
 specifying the call back API for applications of each supported use case.
 
+An application id of all 0s is reserved for referencing the message handler
+itself as the recipient or sender of the application message.
+
 #### Abstract CLPR Application Use Cases
 
 Each `CLPR Application Use Case` specifies the following abstract information:
 
-1. The CLPR Application Message Type identifier for the use case.
+1. The CLPR Application Use Case Identifier (positive integer).
 2. The abstract structure of the initiating CLPR Application Messages
 3. The abstract structure of the reply message for each initiating message.
-4. The handler semantics for each of the above abstract messages.
-5. The abstract application call back API for the use case.
-6. The abstract constructor args for installation of the application
+4. The application call back API for the use case.
+5. The message handler call back API for the use case.
+6. The handler semantics for each of the above abstract messages.
+7. The abstract constructor args for installation of the application
 
-### Application Use Case: Remote Contract Call
+The following data must be included in every application message constructed:
+
+1. The application use case identifier
+2. The application id of the sending application.
+3. The application id of the receiving application.
+3. The application message sequence number
+    1. This is a different sequence number than used in the connector protocol.
+    2. If this is an initiating message, the sequence number is increased
+    3. If this is a replay message, the sequence number is the sequence
+       number of the message being replied to.
+
+How the final application messages are constructed, whether by the installed
+application or the message handlers for the use case is up to the
+implementation. Some CLPR implementations may choose to have the
+application construct the whole message. The specification of the
+abstraction assumes that message handlers construct the outgoing messages
+and provide as much of the boilerplate information as they can, minimizing
+the call back API so that the application provides the minimal set of
+necessary information it must provide.
+
+### Application Use Case: Remote Application Call
+
+The CLPR Application Use Case Identifier for `Remote Application Calls` is `1`.
+
+For this use case an application installed on one CLPR Endpoint wants to
+invoke a possibly different application on a different CLPR Endpoint. To
+perform the call, the initiating application communicates with its local
+application message handler to provide it the application message for the
+remote handler to process and indicates which connector to send the message
+through.
 
 #### Abstract Initiating Message
 
+The content of the initiating remote application call message is the following:
+
+1. The application use case identifier
+2. The application identifier of the initiating application.
+3. The application identifier of the receiving application.
+4. the outgoing message sequence number for this application.
+5. The application identifier of the remote application to invoke.
+6. The byte array containing the raw call data for the application to process.
+
+The CLPR Endpoint extension defines the data format for this message. Any
+additional content in the data format should be ignored.
+
 #### Abstract Reply
 
-#### Abstract Handler Semantics
+The content of the reply to the remote application call message is the
+following:
+
+1. The application use case identifier
+2. The identifier of the replying application.
+3. The application identifier of the original initiating application.
+4. The sequence number of the application message this is in reply to.
+5. A boolean flag indicating if execution was successful or failed.
+6. the byte array containing the raw call data of the reply. This may
+   contain details of any errors if the boolean flag indicated failure.
+
+The CLPR Endpoint extension defines the data format for this message. Any
+additional content in the data format should be ignored.
 
 #### Abstract Application Call Back API
+
+For the remote application call use case, the following application APIs
+should be defined. The name of the methods should be similar and all
+specified parameters should be accounted for.
+
+The following methods with arguments should be implemented by all applications
+implementing this use case:
+
+1. `handleRemoteApplicationCall`
+    1. The connector alias of the connector conveying the message.
+    2. The initiating remote application call message.
+2. `handleReplyRemoteApplicationCall`
+    1. The connector alias of the connector conveying the reply.
+    2. The reply message for the remote application call.
+
+#### Abstract Message Handler Call Back API
+
+The following callback API is invoked by the installed application to
+initiate and reply to remote application calls. In this specification, the
+application provides the minimal necessary data for the message handler to
+construct the outgoing message and determine which connector to send the
+message through.
+
+1. `sendRemoteApplicationCall`
+    1. The connector to send the message through
+    2. The application id of the destination application to invoke
+    3. The call data to send the application.
+2. `replyRemoteApplicationCall`
+    1. A boolean indicating success or failure.
+    2. The call data to return as the result of handling the initiating message
+        1. This must be called in the context of `handleRemoteApplicationCall`
+
+All other fields of the initiating and reply messages can be inferred and
+managed by the message handler for the application use case.
+
+#### Abstract Message Handler Semantics
+
+The message handlers for the `Remote Application Call` use case play an active
+role in both sending and receiving the applications messages through
+connectors. In sending, the messages handlers construct the messages to
+send, and in receiving, the message handlers must facilitate the ability to
+reply to initiating remote application calls.
+
+##### Receiving Application Messages
+
+When receiving application messages, the message handler must introspect the
+message to determine if it is an initiating message or a reply message.
+
+The following are the semantics for receiving and handling an initiating
+message:
+
+1. Identify the receiving application to call from its id.
+2. Store the following in either shared local memory or state:
+    1. The connector alias the message was received through
+    2. The sending application id.
+    3. The application sequence number in the message
+3. Invoke the `handleRemoteApplicationCall` of the receiving application
+4. Upon return of control flow verify that `replyRemoteApplicationCall` has
+   been called and a reply message has been sent.
+5. If a reply message has not been sent, generate a reply message indicating
+   critical failure by the application.
+6. Clean up shared memory or state by purging the saved metadata from step 2
+   and any markers for having sent reply messages.
+
+The following are the semantics for receiving and handling a reply message:
+
+1. Identify the receiving application to call from its id.
+2. Invoke the `handleReplyRemoteApplicationCall` of the receiving application
+
+##### Sending Application Messages
+
+All application messages sent by the message handler are in response to the
+application causing the message to be sent through a API callback call.
+
+The following are the semantics for `sendRemoteApplicationCall`:
+
+1. verify the existence of the connector that the message will be using.
+    1. If the connector doesn't exist, return failure.
+2. increment the stored application message sequence number for outgoing
+   messages of this application.
+3. Construct the initiating application message for the remote application
+   call use case.
+4. Submit the message to the proper connector.
+    1. If the connector rejects the message, return failure.
+5. Return the application message sequence number for the message sent,
+   indicating success.
+
+The following are the semantics of `replyRemoteApplicationCall`:
+
+1. Verify this method call is in the context of `handleRemoteApplicationCall`.
+2. Retrieve the following stored metadata from shared memory or state:
+    1. The connector alias the message was received through
+    2. The origination application id
+    3. The originating application's sequence id for the message.
+3. Construct the reply application message to send.
+4. Submit the message to the connector indicated by the stored alias.
+    1. If the connector rejects the message, return failure.
+5. Store in shared memory or state that a reply message has been sent for
+   the application id and sequence number pair.
+6. Return success for sending the reply message.
 
 #### Abstract Constructor Arguments
 
@@ -787,7 +944,7 @@ message HieroClprConnectorMessageSequence {
 
 #### Hiero CLPR Application Protocol Extensions
 
-##### Remote Contract Call Extensions
+##### Remote Application Call Extensions
 
 ### Hiero CLPR Endpoint Implementation
 
@@ -799,7 +956,7 @@ message HieroClprConnectorMessageSequence {
 
 ##### Connector State
 
-### Hiero CLPR Remote Contract Call Implementation
+### Hiero CLPR Remote Application Call Implementation
 
 ### The Hiero CLPR SDK
 
