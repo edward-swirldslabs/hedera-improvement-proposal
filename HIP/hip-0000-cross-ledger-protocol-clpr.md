@@ -948,13 +948,49 @@ message HieroClprConnectorMessageSequence {
 
 ### Hiero CLPR Endpoint Implementation
 
-#### Hiero CLPR Connector Transactions
+In this CLPR Implementation, connector state is stored within the Hiero 
+ledger state.  While a single network connected node may function as a CLPR 
+Endpoint, the connector state cannot be updated until the state proofs are 
+submitted to the ledger and handled by all consensus nodes deterministically.  
+
+The Hiero CLPR Endpoint implementation is organized into the following parts: 
+1. The CLPR HAPI Transactions
+2. The CLPR Endpoint Network Server and Client
+3. The `CLPR Connector Service` (Handling the Connector HAPI Transactions)
+4. The `CLPR Application Service` (Handling the CLPR Application Messages)
+
+Both the Consensus Nodes and the Block Nodes will have the state data 
+necessary to function as the network termination points for the CLPR 
+Endpoint Server and Client code. In either case, when a single node acts as a 
+network gateway, that node will need to submit HAPI transactions containing 
+the connector state proofs to the Hiero Ledger so that all consensus nodes 
+process the connector state changes and update the connector state.
+
+For this initial implementation, while the volume of CLPR messages is low, the 
+network Server and Client code will live on the consensus nodes and 
+individual consensus nodes can act as CLPR Endpoints. In the future it may 
+be appropriate to move the network Server and Client code to block nodes.  
+When sharding is implemented, a hybrid behavior may be warranted where 
+intershard communication happens directly between consensus nodes using each 
+shard's consensus nodes as the CLPR Endpoints and interledger communication 
+happens using block nodes as the CLPR Endpoints.
+
+![CLPR Block Node As Endpoint](../assets/hip-0000-clpr/clpr-cn-vs-bn-as-endpoints.drawio.svg)
+
+#### Hiero CLPR HAPI Transactions
+
+##### Connector State Proofs
 
 ##### Connector Registration and Update
 
 ##### Delete Connector
 
-##### Connector State
+#### The CLPR Endpoint Network Server and Client
+
+#### The CLPR Connector Service
+
+#### The CLPR Application Service
+
 
 ### Hiero CLPR Remote Application Call Implementation
 
