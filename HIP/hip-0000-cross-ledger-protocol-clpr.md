@@ -19,28 +19,83 @@ superseded-by: N/A
 
 ## Abstract
 
-This HIP introduces the `Cross-Ledger PRotocol` or `CLPR`, pronounced `clipper`
-like the type of ship. `CLPR` is an interledger communication protocol that
-uses a connector abstraction to manage `CLPR Application Message` queues
-and payments for message handling between two CLPR enabled endpoints. The
-use of the connector abstraction allows for a clean separation of concerns
-between the `CLPR Connector Protocol`, which performs secure message
-passing through state proofs, and the `CLPR Application Protocol` which
-enables the development of interledger applications. CLPR is an extensible
-protocol that eliminates the need for intermediate relays, bridges, or oracles
-between two `CLPR Endpoints` that have had one or more connectors registered
-between them. If two `CLPR Endpoints` are individually asynchronous
-byzantine fault-tolerant (`ABFT`) and they handle and reply to `CLPR 
-Application Messages` in order of their sending through connectors, then the
-whole interledger interaction is `ABFT`. The semantics of CLPR preserves the
-weaker security profile between the two CLPR Endpoints and does not weaken
-it further.
+This HIP introduces the `Cross-Ledger PRotocol` or `CLPR`, pronounced `Clipper`
+like the type of ship. `CLPR` or `Clipper` is an interledger communication
+protocol that uses a connector abstraction to manage the logistics of payments
+and sending application messages between different ledgers. The use of the
+connector abstraction allows for a clean separation of concerns between
+application logic and the mechanics of sending messages via state proofs of
+connector state. Combining the use of state proofs to establish message
+order with the semantics of guaranteed, exactly once, in-order message
+handling, Clipper is able to preserve the asynchronous Byzantine
+Fault Tolerant (aBFT) security profile of an already aBFT secure ledger.
 
-In this HIP we specify the CLPR extensions needed to support the
-registration of connectors and message passing between two Hiero ledgers.
-With the implementation of this HIP, every Hiero Ledger can be configured
-to act as a CLPR Endpoint, register connectors to other CLPR Endpoints,
-and support the deployment of `CLPR Applications`.
+![Separable Connector and Application](../assets/hip-0000-clpr/clpr-simple-high-level-diagram.drawio.svg)
+
+Two Clipper enabled ledgers can communicate directy with each other without
+the use of intermediate relays, bridges, or oracles. If both ledgers are
+aBFT, then the combined interaction is aBFT. If one ledger was
+only BFT while the other was aBFT, the combined interaction is BFT. Clipper
+preserves the weaker security profile of the interacting ledgers.
+
+Clipper is extensible in two ways. The `Clipper Application Protocol`
+specifies the space of possible application use cases and can can be
+extended to with new sets of messages to enable new use cases. The
+`Clipper Connector Protocol` can be extended to support new ledger types and
+state proof formats.
+
+In this HIP we specify the core behavior of a generic `Clipper Endpoint`,
+the core mechanics of a `Clipper Application`, and Hiero's and
+implementation of both.
+
+## Glossary of Terms
+
+* `Clipper`
+    * A framework and collection of protocols for enabling interledger
+      applications to communicate through aBFT secure message passing via the
+      connector abstraction.
+* `Clipper Application`
+    * A distributed application installed on two or more ledgers that passes
+      messages through a connector to communicate. A clipper application's
+      functionality is organized into one or more use cases.
+* `Application Message`
+    * A messages sent from one application installed on one ledger to a
+      remote application installed on a different ledger through a connector
+      between the two ledgers.
+* `Clipper Application Protocol`
+    * The Clipper Application Protocol is the specification of application
+      messages, callback APIs, and semantics for asynchronously handling the
+      messages, all organized into discrete use cases.
+* `Connector`
+    * A connector manages the outgoing application message queue, permission to
+      submit messages to the queue, and payment mechanics for handling sent and
+      received application messages.
+* `Connector State Proof`
+    * A state proof that establishes the state of a connector, indicating the
+      messages received and sent, or provides proof of a portion of the outgoing
+      message queue contents of a connector.
+* `Clipper Endpoint`
+    * A clipper endpoint is a network server endpoint (ip address and port)
+      for a machine that can share state proofs for one or more connectors.
+      There may be multiple clipper endpoints for a ledger, but there is a
+      single ledger associated with each clipper endpoint.
+* `Clipper Endpoint Type`
+    * Different types of ledgers and clipper endpoints may employ
+      different state proof mechanisms or have different data formats for
+      messages and other content stored in their state.
+* `Clipper Endpoint Configuration`
+    * The configuration for a set of clipper endpoints indicates their type, the
+      ip addresses and ports to connect to, and the configuration to use for
+      validating the state proofs from the endpoints. It is assumed that all
+      endpoints in a configuration are for the same ledger.
+* `Communication Channel`
+    * Two Clipper Endpoints are able to form a communication channel between
+      them when there has been at least one matching connector registered
+      with the endpoints where the registration provides the configuration for
+      the remote endpoint.
+* `Clipper Connector Protocol`
+    * The Clipper Connector Protocol is the specification of state proofs for
+      conveying connector state and updating clipper endpoint configuration.
 
 ## Motivation
 
@@ -112,7 +167,7 @@ the `CLPR Connector Protocol`, the interledger application logic can remain
 free of these concerns. The separability of the connector logic from the
 application logic allows for a flexibility in deployment architecture and
 provides a way for ledgers which do not have strong state proof capabilities
-to integrate into the CLPR ecosystem through using a CLPR Endpoint relay.  
+to integrate into the CLPR ecosystem through using a CLPR Endpoint relay.
 The use of such a relay does introduce an additional point of possible
 failure, cost, and trust which weakens the reliability and security compared
 to deployments which can cohouse the CLPR Endpoints and CLPR Applications.
@@ -948,49 +1003,95 @@ message HieroClprConnectorMessageSequence {
 
 ### Hiero CLPR Endpoint Implementation
 
-In this CLPR Implementation, connector state is stored within the Hiero 
-ledger state.  While a single network connected node may function as a CLPR 
-Endpoint, the connector state cannot be updated until the state proofs are 
-submitted to the ledger and handled by all consensus nodes deterministically.  
+In this CLPR Implementation, connector state is stored within the Hiero
+ledger state. While a single network connected node may function as a CLPR
+Endpoint, the connector state cannot be updated until the state proofs are
+submitted to the ledger and handled by all consensus nodes deterministically.
 
-The Hiero CLPR Endpoint implementation is organized into the following parts: 
+The Hiero CLPR Endpoint implementation is organized into the following parts:
+
 1. The CLPR HAPI Transactions
 2. The CLPR Endpoint Network Server and Client
 3. The `CLPR Connector Service` (Handling the Connector HAPI Transactions)
 4. The `CLPR Application Service` (Handling the CLPR Application Messages)
 
-Both the Consensus Nodes and the Block Nodes will have the state data 
-necessary to function as the network termination points for the CLPR 
-Endpoint Server and Client code. In either case, when a single node acts as a 
-network gateway, that node will need to submit HAPI transactions containing 
-the connector state proofs to the Hiero Ledger so that all consensus nodes 
+Both the Consensus Nodes and the Block Nodes will have the state data
+necessary to function as the network termination points for the CLPR
+Endpoint Server and Client code. In either case, when a single node acts as a
+network gateway, that node will need to submit HAPI transactions containing
+the connector state proofs to the Hiero Ledger so that all consensus nodes
 process the connector state changes and update the connector state.
 
-For this initial implementation, while the volume of CLPR messages is low, the 
-network Server and Client code will live on the consensus nodes and 
-individual consensus nodes can act as CLPR Endpoints. In the future it may 
+For this initial implementation, while the volume of CLPR Channel messages is
+low, the network Server and Client code will live on the consensus nodes and
+individual consensus nodes can act as CLPR Endpoints. In the future it may
 be appropriate to move the network Server and Client code to block nodes.  
-When sharding is implemented, a hybrid behavior may be warranted where 
-intershard communication happens directly between consensus nodes using each 
-shard's consensus nodes as the CLPR Endpoints and interledger communication 
-happens using block nodes as the CLPR Endpoints.
+When sharding is implemented, a hybrid behavior may be warranted where
+intershard communication happens directly between consensus nodes using each
+shard's consensus nodes as the CLPR Endpoints and interledger communication
+happens using block nodes as the CLPR Endpoints. The addition of the Block
+Node as a relay in the pipeline does not weaken the trust model of the
+communication via state proofs, which are still validated by the ledger.  
+The potential for physical failure of the block node relays does weaken
+the reliability of the full communication path, however.
 
 ![CLPR Block Node As Endpoint](../assets/hip-0000-clpr/clpr-cn-vs-bn-as-endpoints.drawio.svg)
 
+Whether the CLPR Endpoint Network Server and Client code is operating from
+a consensus node or the block node, the HAPI Transaction protobuf is
+identical. The difference between them is who is signing the transaction to
+submit to the network and whether it is submitted through the public
+HAPI Transaction gateway. While the consensus node is able to submit the
+transactions directly to its internal transaction queue, the block node must
+submit the transactions through the public gateway. A Consensus node has
+direct access to the state it computes through handling transactions. A
+Block Node must wait to receive state updates through the block stream
+reporting it. This adds a slight latency to both submission and receiving
+the results of submission. For interledger communication, this added latency is
+likely negligible compared to the configured frequency of exchanging
+messages between CLPR Endpoints.
+
 #### Hiero CLPR HAPI Transactions
 
-##### Connector State Proofs
+##### HAPI: Connector State Proofs
 
-##### Connector Registration and Update
-
-##### Delete Connector
+##### HAPI: Connector Registration, Update, and Delete
 
 #### The CLPR Endpoint Network Server and Client
+
+All inbound connections to a Hiero CLPR Endpoint are through gRPC request
+response exchanges in the protobuf format specified by the Hiero extensions
+to the channel messages. All outbound connections are in the data format
+specified by the CLPR Endpoint acting as a server.
+
+If the Hiero network is configured to throttle or restrict the size of
+Connector State Proof HAPI transactions, the CLPR Endpoint must know this
+configuration to ensure that the communicated channel throttle messages are
+within these bounds. The received state proofs over the CLPR Endpoint
+Channel must be directly translatable to submittable Connector State
+Proof HAPI transactions.
+
+The Hiero CLPR Endpoint Network Server and Client code must verify the state
+proofs before submitting them to a network in a HAPI transaction. The Hiero
+Network may shun any source of failed state proofs, even if that is one of
+its own consensus nodes. As much due diligence should be done as possible
+before committing the network resources to processing the state proofs and
+handling the interledger messages.
+
+Each Hiero CLPR Endpoint submitting HAPI transactions to a Hiero network
+needs its own transaction signing key and must sign each of the HAPI
+transactions it submits with this key. This signature is used to properly
+identify the entity submitting the HAPI transaction.
+
+##### Frequency of CLPR Endpoint Connections
+
+Each CLPR Endpoint has a configurable frequency which defines the base rate
+at which the CLPR Endpoint will attempt to make connections to other CLPR
+Endpoints with which it has a connector with.
 
 #### The CLPR Connector Service
 
 #### The CLPR Application Service
-
 
 ### Hiero CLPR Remote Application Call Implementation
 
