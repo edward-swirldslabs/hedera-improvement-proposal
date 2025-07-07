@@ -410,9 +410,9 @@ A `Proof of Remote CLPR Endpoint Configuration` Channel Message has two parts.
 The content of the remote CLPR Endpoint configuration includes at minimum
 the following:
 
-1. `clpr_endpoint_type` : The type of the CLPR Endpoint.
-2. `clpr_endpoint_id` : The CLPR Endpoint's Id
-3. `clpr_endpoint_ips` : The list of remote endpoint ip addresses
+1. `endpoint_type` : The type of the CLPR Endpoint.
+2. `endpoint_id` : The CLPR Endpoint's Id
+3. `endpoint_addresses` : The list of remote endpoint addresses
 4. `proof_configuration` : The latest known configuration for validating
    proofs from the remote CLPR Endpoint
 
