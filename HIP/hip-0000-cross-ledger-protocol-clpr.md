@@ -22,7 +22,7 @@ superseded-by: N/A
 This HIP introduces the `Cross-Ledger PRotocol` or `CLPR`, pronounced `Clipper`
 like the type of ship. `CLPR` or `Clipper` is an interledger communication
 protocol that uses a connector abstraction to manage the logistics of payments
-and sending application messages between different ledgers. The use of the
+and sending messages between different ledgers. The use of the
 connector abstraction allows for a clean separation of concerns between
 application logic and the mechanics of sending messages via state proofs of
 connector state. Combining the use of state proofs to establish message
