@@ -45,7 +45,7 @@ extended to with new sets of messages to enable new use cases. The
 state proof formats.
 
 In this HIP we specify the core behavior of a generic `Clipper Endpoint`,
-the core mechanics of a `Clipper Application`, and Hiero's and
+the core mechanics of a `Clipper Application`, and Hiero's
 implementation of both.
 
 ## Glossary of Terms
