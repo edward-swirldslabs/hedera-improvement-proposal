@@ -394,7 +394,7 @@ The protocol for a `Connector Sync` has the following pattern:
 
 The required content of channel messages passed between endpoints is
 specified here. Each endpoint type will have its own data format and may
-provide additional data in the messages that is irrelevant. The additional
+provide additional data in the messages that is relevant. The additional
 data may include metadata related to how this content is stored in the
 state of each endpoint. The hashing algorithm used and the state proof
 paradigm are determined by the type of endpoint sending the content.
