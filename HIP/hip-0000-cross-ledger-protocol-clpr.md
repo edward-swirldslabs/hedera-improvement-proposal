@@ -39,7 +39,7 @@ only BFT while the other was aBFT, the combined interaction is BFT. Clipper
 preserves the weaker security profile of the interacting ledgers.
 
 Clipper is extensible in two ways. The `Clipper Application Protocol`
-specifies the space of possible application use cases and can can be
+specifies the space of possible application use cases and can be
 extended to with new sets of messages to enable new use cases. The
 `Clipper Connector Protocol` can be extended to support new ledger types and
 state proof formats.
