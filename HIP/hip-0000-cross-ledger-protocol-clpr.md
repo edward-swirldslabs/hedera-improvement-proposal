@@ -293,11 +293,11 @@ connector registration or update transaction and is signed by the connector
 private key:
 
 1. `connector_key` : the connector's public key for pairing
-2. `local_clpr_endpoint_id` : the identifier of the local clpr endpoint
-3. `local_clpr_endpoint_type` : indicates the type of local clpr endpoint
-4. `local_clpr_endpoint_config` : local endpoint configuration
-5. `remote_clpr_endpoint_type` : indicatest the type of remote clpr endpoint
-6. `remote_clpr_endpoint_config` : remote endpoint configuration for that type
+1. `is_endpoint_remote` : Flag set true if the endpoint is remote,
+                          or false if the endpoint is local
+2. `endpoint_id` : the identifier of the clpr endpoint
+3. `endpoint_type` : indicates the type of clpr endpoint
+4. `endpoint_config` : endpoint configuration
     1. `clpr_endpoint_id` : the unique identifier for the CLPR Endpoint
     2. `clpr_endpoint_ips` : an optional list of CLPR Endpoint IP addresses
     3. `proof_configuration` : the initial config for validating state proofs
