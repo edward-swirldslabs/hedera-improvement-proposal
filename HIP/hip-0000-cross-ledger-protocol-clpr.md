@@ -438,7 +438,7 @@ determined by the endpoint type and consists of at least the following:
 2. `connector_alias` : The endpoint's optional short name for the connector
 3. `in_received` : The latest received incoming message's sequence number
 4. `in_running_hash` : The running hash of received messages after processing
-   the `in_rec` incoming message.
+   the `in_received` incoming message.
 5. `out_received` : The highest observation of the remote connector's
    `in_received` value.
 6. `out_next_seq_num` : The next unused sequence number for outgoing
